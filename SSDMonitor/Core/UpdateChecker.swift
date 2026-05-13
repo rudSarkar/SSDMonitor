@@ -3,11 +3,12 @@ import Foundation
 @MainActor
 final class UpdateChecker: ObservableObject {
     // ← After pushing to GitHub, replace with your "owner/repo"
-    static let repo = "OWNER/SSDMonitor"
+    static let repo = "rudSarkar/SSDMonitor"
 
     @Published var availableVersion: String? = nil
     @Published var releasePageURL:   URL?    = nil
     @Published var isChecking               = false
+    @Published var isUpToDate               = false
 
     func checkForUpdates() {
         guard !isChecking,
@@ -31,6 +32,11 @@ final class UpdateChecker: ObservableObject {
                 if tag.compare(current, options: .numeric) == .orderedDescending {
                     self?.availableVersion = release.tagName
                     self?.releasePageURL   = URL(string: release.htmlUrl)
+                } else {
+                    self?.isUpToDate = true
+                    // Clear the "up to date" badge after 3 seconds
+                    try? await Task.sleep(for: .seconds(3))
+                    self?.isUpToDate = false
                 }
             }
         }.resume()

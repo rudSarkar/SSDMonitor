@@ -66,6 +66,10 @@ struct SettingsMenuView: View {
             Label("Checking…", systemImage: "arrow.triangle.2.circlepath")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
+        } else if updater.isUpToDate {
+            Label("Up to date", systemImage: "checkmark.circle.fill")
+                .font(.caption)
+                .foregroundStyle(.green)
         } else {
             Button(action: { updater.checkForUpdates() }) {
                 Label("Check for Updates", systemImage: "arrow.triangle.2.circlepath")

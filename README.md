@@ -2,7 +2,7 @@
 
 A native macOS menu bar app that shows your SSD temperature, read speed, and write speed in real time — with no background daemons, no subprocess calls, and no App Store limitations.
 
-![macOS](https://img.shields.io/badge/macOS-13%2B-blue) ![Swift](https://img.shields.io/badge/Swift-5-orange) ![Architecture](https://img.shields.io/badge/arch-Apple%20Silicon%20%7C%20Intel-green)
+![macOS](https://img.shields.io/badge/macOS-13%2B-blue) ![Swift](https://img.shields.io/badge/Swift-5-orange) ![Architecture](https://img.shields.io/badge/arch-Apple%20Silicon%20%7C%20Intel-green) ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
 ---
 
@@ -14,6 +14,8 @@ A native macOS menu bar app that shows your SSD temperature, read speed, and wri
 - **Popover dashboard** — animated arc gauge, speed bars, disk model name, and settings
 - **°C / °F toggle** — persisted across launches
 - **Configurable refresh interval** — 1 s / 2 s / 5 s / 10 s
+- **Launch at Login** — optional, toggled from the popover with one click
+- **Auto update checker** — checks GitHub releases on launch; shows a "Up to date" confirmation or a direct link to the new release
 - **Apple Silicon + Intel** — separate sensor backends, auto-selected at compile time
 - **No sandbox** — direct IOKit access, no helper processes
 
@@ -40,6 +42,17 @@ A native macOS menu bar app that shows your SSD temperature, read speed, and wri
 
 ---
 
+## Installation
+
+Download the latest `.dmg` from the [Releases](https://github.com/rudSarkar/SSDMonitor/releases) page, mount it, and drag **SSDMonitor.app** to `/Applications`.
+
+> **First launch:** macOS may show a Gatekeeper warning because the app is not notarized. Right-click the app → **Open** to bypass it once, or run:
+> ```bash
+> xattr -dr com.apple.quarantine /Applications/SSDMonitor.app
+> ```
+
+---
+
 ## Build from Source
 
 ```bash
@@ -60,6 +73,19 @@ No CocoaPods, no SPM dependencies, no external tools required.
 
 ---
 
+## Usage
+
+| Action | Result |
+|--------|--------|
+| **Click** menu bar item | Open the dashboard popover |
+| **Interval picker** (1s / 2s / 5s / 10s) | Change how often stats refresh |
+| **Unit picker** (°C / °F) | Switch temperature unit |
+| **Launch at Login toggle** | Start SSDMonitor automatically at startup |
+| **Check for Updates** | Manually poll GitHub for a newer release |
+| **Quit** | Exit the app |
+
+---
+
 ## How It Works
 
 ### Temperature — Apple Silicon
@@ -72,7 +98,7 @@ Apple Silicon exposes NVMe temperature through a private `IOHIDEventSystem` API.
 | `IOHIDServiceClientCopyEvent(service, 15, 0)` | Reads the current temperature event (type 15) |
 | `IOHIDEventGetFloatValue(event, (15<<16)\|0)` | Extracts the °C value as a `Double` |
 
-Service discovery uses public IOKit APIs: `IOHIDEventSystemClientCopyServices` enumerates all 100+ HID services; `IOHIDServiceClientConformsTo(svc, 0xFF00, 5)` filters to thermal sensors; the one with `Product` containing `"NAND"` is the NVMe sensor.
+Service discovery uses public IOKit APIs: `IOHIDEventSystemClientCopyServices` enumerates all HID services; `IOHIDServiceClientConformsTo(svc, 0xFF00, 5)` filters to thermal sensors; the one with `Product` containing `"NAND"` is the NVMe sensor.
 
 ### Temperature — Intel
 
@@ -90,6 +116,20 @@ IOBlockStorageDriver
 
 Internal drives are identified by walking to the child `IOMedia` node and checking `Removable=false` + `Ejectable=false`.
 
+### Update Checker
+
+On every launch, the app silently calls the GitHub Releases API:
+
+```
+GET https://api.github.com/repos/rudSarkar/SSDMonitor/releases/latest
+```
+
+It compares `tag_name` against `CFBundleShortVersionString` using numeric string comparison (so `1.10 > 1.9`). If a newer version exists, a blue **"Update vX.Y available →"** link appears in the popover that opens the release page. If already on the latest version, a green **"Up to date ✓"** badge appears for 3 seconds.
+
+### Launch at Login
+
+Uses `SMAppService.mainApp` (macOS 13+ native API, `ServiceManagement` framework). No helper process or LaunchAgent plist required — the OS manages it directly.
+
 ---
 
 ## Project Structure
@@ -97,12 +137,13 @@ Internal drives are identified by walking to the child `IOMedia` node and checki
 ```
 SSDMonitor/
 ├── App/
-│   ├── AppDelegate.swift          # NSStatusItem + NSPopover setup
+│   ├── AppDelegate.swift          # NSStatusItem + NSPopover setup, activation policy
 │   └── SSDMonitorApp.swift        # SwiftUI entry point (LSUIElement, no dock icon)
 ├── Core/
 │   ├── MonitorService.swift       # @MainActor ObservableObject, timer, Combine wiring
 │   ├── DiskIOReader.swift         # IOBlockStorageDriver → MB/s
-│   └── UserSettings.swift         # UserDefaults persistence (unit, interval)
+│   ├── UserSettings.swift         # UserDefaults + SMAppService (launch at login)
+│   └── UpdateChecker.swift        # GitHub Releases API, semantic version comparison
 ├── Sensors/
 │   ├── TemperatureReader.swift    # Protocol
 │   ├── HIDTemperatureReader.swift # Apple Silicon — private IOHIDEventSystem dlsym
@@ -110,12 +151,14 @@ SSDMonitor/
 │   └── SMCBridge.h                # C structs for SMC key data
 ├── Models/
 │   └── SSDStats.swift             # Data model + formatting helpers
-└── UI/
-    ├── StatusBarController.swift  # Menu bar text rendering
-    ├── PopoverContentView.swift   # Root popover layout
-    ├── TemperatureGaugeView.swift # Animated arc gauge (green/yellow/red)
-    ├── SpeedRowView.swift         # R/W progress bars
-    └── SettingsMenuView.swift     # Interval + unit pickers, Quit button
+├── UI/
+│   ├── StatusBarController.swift  # Menu bar text rendering
+│   ├── PopoverContentView.swift   # Root popover layout
+│   ├── TemperatureGaugeView.swift # Animated arc gauge (green/yellow/red)
+│   ├── SpeedRowView.swift         # R/W progress bars
+│   └── SettingsMenuView.swift     # Interval + unit pickers, launch at login, update
+└── scripts/
+    └── make_icon.swift            # Generates AppIcon PNG slices via CoreGraphics
 ```
 
 ---
@@ -131,19 +174,34 @@ AppDelegate
                     │       └── dlsym → IOHIDEventSystem private API
                     ├── SMCTemperatureReader  (Intel)
                     │       └── IOConnectCallStructMethod → AppleSMC
-                    └── DiskIOReader
-                            └── IORegistryEntryCreateCFProperty → Statistics
+                    ├── DiskIOReader
+                    │       └── IORegistryEntryCreateCFProperty → Statistics
+                    └── UpdateChecker
+                            └── URLSession → GitHub Releases API
 ```
 
 `MonitorService` publishes `@Published var stats: SSDStats` on every tick. Both `StatusBarController` and `PopoverContentView` observe it via Combine / `@ObservedObject`.
 
 ---
 
+## Release
+
+Releases are built automatically via GitHub Actions. To publish a new version:
+
+```bash
+git tag v1.1.0
+git push origin v1.1.0
+```
+
+The workflow builds a Release `.app`, signs it ad-hoc, strips the quarantine attribute, packages it into a `.dmg`, and publishes it as a GitHub Release with auto-generated release notes.
+
+---
+
 ## Privacy & Security
 
-- **No network access** — entirely local IOKit calls
+- **Minimal network access** — one HTTPS request to `api.github.com` on launch for update checking; all sensor data is read locally
 - **No sudo / root required** — runs as a normal user process
-- **App Sandbox disabled** — required to open `/dev/` IOKit connections; the app makes no file system writes outside of `UserDefaults`
+- **App Sandbox disabled** — required to open IOKit connections; the app makes no file system writes outside of `UserDefaults`
 - **No private frameworks linked** — private symbols are loaded at runtime via `dlsym`; the binary has no hard dependency on undocumented APIs
 
 ---
