@@ -1,0 +1,95 @@
+import SwiftUI
+
+struct PopoverContentView: View {
+    @ObservedObject var monitor: MonitorService
+
+    // Reference speed for normalising bars (500 MB/s = fast NVMe baseline)
+    private let barMax: Double = 500
+
+    var body: some View {
+        VStack(spacing: 0) {
+            header
+            Divider()
+            temperatureSection
+            Divider().padding(.horizontal, 16)
+            speedSection
+            Divider()
+            diskInfoRow
+            Divider()
+            settingsRow
+        }
+        .frame(width: 280)
+    }
+
+    // MARK: - Sections
+
+    private var header: some View {
+        HStack {
+            Image(systemName: "internaldrive.fill")
+                .foregroundStyle(.blue)
+            Text("SSD Monitor")
+                .font(.headline)
+            Spacer()
+            Circle()
+                .fill(.green)
+                .frame(width: 7, height: 7)
+                .help("Live — updates every 2 s")
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+    }
+
+    private var temperatureSection: some View {
+        HStack {
+            Spacer()
+            TemperatureGaugeView(stats: monitor.stats, unit: monitor.settings.unit)
+            Spacer()
+        }
+        .padding(.vertical, 14)
+    }
+
+    private var speedSection: some View {
+        VStack(spacing: 10) {
+            SpeedRowView(
+                label:    "Read",
+                icon:     "arrow.down.circle.fill",
+                speed:    monitor.stats.readSpeedMBs,
+                maxSpeed: barMax,
+                color:    .blue
+            )
+            SpeedRowView(
+                label:    "Write",
+                icon:     "arrow.up.circle.fill",
+                speed:    monitor.stats.writeSpeedMBs,
+                maxSpeed: barMax,
+                color:    .orange
+            )
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+    }
+
+    private var diskInfoRow: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 6) {
+                Image(systemName: "internaldrive")
+                    .foregroundStyle(.secondary)
+                    .font(.caption)
+                Text(monitor.stats.diskName)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Spacer()
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+    }
+
+    private var settingsRow: some View {
+        SettingsMenuView(settings: monitor.settings)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+    }
+}

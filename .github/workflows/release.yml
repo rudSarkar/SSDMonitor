@@ -1,0 +1,122 @@
+name: Release
+
+# Trigger: push a tag like  git tag v1.0.0 && git push origin v1.0.0
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write   # needed to create the GitHub release
+
+jobs:
+  build-and-release:
+    runs-on: macos-14   # Apple Silicon (M1) runner
+
+    steps:
+      # ── 1. Source ────────────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── 2. Build ─────────────────────────────────────────────────────────────
+      - name: Build (Release)
+        run: |
+          xcodebuild \
+            -project SSDMonitor.xcodeproj \
+            -scheme SSDMonitor \
+            -configuration Release \
+            -derivedDataPath "$RUNNER_TEMP/build" \
+            build
+
+      # ── 3. Code-sign ─────────────────────────────────────────────────────────
+      #
+      # OPTION A — Ad-hoc signing (no Apple Developer account needed).
+      #   Users will see a Gatekeeper warning on first launch; they can bypass it
+      #   via right-click → Open, or:  xattr -dr com.apple.quarantine SSDMonitor.app
+      #
+      - name: Sign (ad-hoc)
+        if: ${{ env.APPLE_DEVELOPER_ID == '' }}
+        env:
+          APPLE_DEVELOPER_ID: ${{ secrets.APPLE_DEVELOPER_ID }}
+        run: |
+          codesign \
+            --force --deep --sign - \
+            "$RUNNER_TEMP/build/Build/Products/Release/SSDMonitor.app"
+
+      #
+      # OPTION B — Developer ID signing + notarization (uncomment and add secrets).
+      #   Required secrets:
+      #     APPLE_CERTIFICATE_BASE64   → base64 of your .p12 export
+      #     APPLE_CERTIFICATE_PASSWORD → .p12 password
+      #     APPLE_DEVELOPER_ID         → "Developer ID Application: Your Name (TEAMID)"
+      #     APPLE_ID                   → your Apple ID email
+      #     APPLE_APP_PASSWORD         → app-specific password for notarytool
+      #     APPLE_TEAM_ID              → your 10-char team ID
+      #
+      # - name: Import signing certificate
+      #   env:
+      #     CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+      #     CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      #   run: |
+      #     KEYCHAIN_PATH="$RUNNER_TEMP/signing.keychain"
+      #     security create-keychain -p "temp" "$KEYCHAIN_PATH"
+      #     security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+      #     security unlock-keychain -p "temp" "$KEYCHAIN_PATH"
+      #     echo "$CERTIFICATE_BASE64" | base64 --decode -o "$RUNNER_TEMP/cert.p12"
+      #     security import "$RUNNER_TEMP/cert.p12" \
+      #       -k "$KEYCHAIN_PATH" -P "$CERTIFICATE_PASSWORD" \
+      #       -T /usr/bin/codesign
+      #     security list-keychain -d user -s "$KEYCHAIN_PATH"
+      #     security set-key-partition-list -S apple-tool:,apple: -s \
+      #       -k "temp" "$KEYCHAIN_PATH"
+      #
+      # - name: Sign (Developer ID)
+      #   run: |
+      #     codesign \
+      #       --force --deep --options runtime \
+      #       --sign "${{ secrets.APPLE_DEVELOPER_ID }}" \
+      #       "$RUNNER_TEMP/build/Build/Products/Release/SSDMonitor.app"
+      #
+      # - name: Notarize
+      #   run: |
+      #     # Zip for submission
+      #     ditto -c -k --sequesterRsrc --keepParent \
+      #       "$RUNNER_TEMP/build/Build/Products/Release/SSDMonitor.app" \
+      #       "$RUNNER_TEMP/SSDMonitor-notarize.zip"
+      #     xcrun notarytool submit "$RUNNER_TEMP/SSDMonitor-notarize.zip" \
+      #       --apple-id "${{ secrets.APPLE_ID }}" \
+      #       --password "${{ secrets.APPLE_APP_PASSWORD }}" \
+      #       --team-id  "${{ secrets.APPLE_TEAM_ID }}" \
+      #       --wait
+      #     xcrun stapler staple \
+      #       "$RUNNER_TEMP/build/Build/Products/Release/SSDMonitor.app"
+
+      # ── 4. Create DMG ────────────────────────────────────────────────────────
+      - name: Create DMG
+        run: |
+          APP="$RUNNER_TEMP/build/Build/Products/Release/SSDMonitor.app"
+          STAGING="$RUNNER_TEMP/dmg_staging"
+          DMG_NAME="SSDMonitor-${{ github.ref_name }}.dmg"
+
+          mkdir "$STAGING"
+          cp -r "$APP" "$STAGING/"
+          ln -s /Applications "$STAGING/Applications"
+
+          hdiutil create \
+            -volname "SSDMonitor ${{ github.ref_name }}" \
+            -srcfolder "$STAGING" \
+            -ov \
+            -format UDZO \
+            "$RUNNER_TEMP/$DMG_NAME"
+
+          echo "DMG_PATH=$RUNNER_TEMP/$DMG_NAME" >> "$GITHUB_ENV"
+          echo "DMG_NAME=$DMG_NAME"              >> "$GITHUB_ENV"
+
+      # ── 5. Publish GitHub Release ────────────────────────────────────────────
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "SSDMonitor ${{ github.ref_name }}"
+          files: ${{ env.DMG_PATH }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
