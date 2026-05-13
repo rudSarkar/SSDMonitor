@@ -24,19 +24,27 @@ struct PopoverContentView: View {
     // MARK: - Sections
 
     private var header: some View {
-        HStack {
+        HStack(alignment: .center) {
             Image(systemName: "internaldrive.fill")
                 .foregroundStyle(.blue)
             Text("SSD Monitor")
                 .font(.headline)
+            Text("v\(appVersion)")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .padding(.leading, 2)
             Spacer()
             Circle()
                 .fill(.green)
                 .frame(width: 7, height: 7)
-                .help("Live — updates every 2 s")
+                .help("Live — updates every \(Int(monitor.settings.refreshInterval))s")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
+    }
+
+    private var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
     }
 
     private var temperatureSection: some View {
