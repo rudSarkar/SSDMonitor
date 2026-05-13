@@ -7,6 +7,8 @@ final class MonitorService: ObservableObject {
     @Published var stats   = SSDStats()
     @Published var settings: UserSettings
 
+    let updateChecker = UpdateChecker()
+
     private let tempReader: TemperatureReader
     private let diskReader = DiskIOReader()
     private var timer:       AnyCancellable?
@@ -30,6 +32,8 @@ final class MonitorService: ObservableObject {
         _ = diskReader.readSpeedsMBs()
 
         startTimer()
+
+        updateChecker.checkForUpdates()
 
         // Restart the timer whenever the refresh interval changes
         intervalCancellable = settings.$refreshInterval

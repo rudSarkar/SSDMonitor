@@ -88,7 +88,7 @@ struct PopoverContentView: View {
     }
 
     private var settingsRow: some View {
-        SettingsMenuView(settings: monitor.settings)
+        SettingsMenuView(settings: monitor.settings, updater: monitor.updateChecker)
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
     }

@@ -15,6 +15,7 @@
 		FB00000000000000000007 /* SMCTemperatureReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA00000000000000000007 /* SMCTemperatureReader.swift */; };
 		FB00000000000000000015 /* TemperatureReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA00000000000000000015 /* TemperatureReader.swift */; };
 		FB00000000000000000016 /* HIDTemperatureReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA00000000000000000016 /* HIDTemperatureReader.swift */; };
+		FB00000000000000000017 /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA00000000000000000017 /* UpdateChecker.swift */; };
 		FB00000000000000000009 /* SSDStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA00000000000000000009 /* SSDStats.swift */; };
 		FB0000000000000000000A /* StatusBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA0000000000000000000A /* StatusBarController.swift */; };
 		FB0000000000000000000B /* PopoverContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA0000000000000000000B /* PopoverContentView.swift */; };
@@ -35,6 +36,7 @@
 		FA00000000000000000008 /* SMCBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SMCBridge.h; sourceTree = "<group>"; };
 		FA00000000000000000015 /* TemperatureReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemperatureReader.swift; sourceTree = "<group>"; };
 		FA00000000000000000016 /* HIDTemperatureReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIDTemperatureReader.swift; sourceTree = "<group>"; };
+		FA00000000000000000017 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateChecker.swift; sourceTree = "<group>"; };
 		FA00000000000000000009 /* SSDStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSDStats.swift; sourceTree = "<group>"; };
 		FA0000000000000000000A /* StatusBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarController.swift; sourceTree = "<group>"; };
 		FA0000000000000000000B /* PopoverContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopoverContentView.swift; sourceTree = "<group>"; };
@@ -101,6 +103,7 @@
 				FA00000000000000000003 /* MonitorService.swift */,
 				FA00000000000000000004 /* DiskIOReader.swift */,
 				FA00000000000000000005 /* UserSettings.swift */,
+				FA00000000000000000017 /* UpdateChecker.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -237,6 +240,7 @@
 				FB00000000000000000015 /* TemperatureReader.swift in Sources */,
 				FB00000000000000000007 /* SMCTemperatureReader.swift in Sources */,
 				FB00000000000000000016 /* HIDTemperatureReader.swift in Sources */,
+				FB00000000000000000017 /* UpdateChecker.swift in Sources */,
 				FB00000000000000000009 /* SSDStats.swift in Sources */,
 				FB0000000000000000000A /* StatusBarController.swift in Sources */,
 				FB0000000000000000000B /* PopoverContentView.swift in Sources */,
